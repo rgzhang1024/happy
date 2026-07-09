@@ -34,9 +34,11 @@ FROM deps AS builder
 
 COPY packages/happy-wire ./packages/happy-wire
 COPY packages/happy-server ./packages/happy-server
+COPY packages/happy-app ./packages/happy-app
 
 RUN pnpm --filter @slopus/happy-wire build
-RUN pnpm --filter happy-server build
+RUN pnpm --filter happy-server-self-host typecheck
+RUN pnpm --filter happy-server-self-host bundle:webapp
 
 # Stage 3: runtime
 FROM node:20-slim AS runner

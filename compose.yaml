@@ -1,0 +1,25 @@
+services:
+  happy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: happy-selfhost:${HAPPY_VERSION:-v0.1.0}
+    container_name: happy-selfhost
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:2604:3005"
+    environment:
+      HANDY_MASTER_SECRET: ${HANDY_MASTER_SECRET:?Set HANDY_MASTER_SECRET in .env}
+      PUBLIC_URL: ${PUBLIC_URL:-http://127.0.0.1:2604}
+      HAPPY_INJECT_HTML_CONFIG: '{"serverUrl":"${PUBLIC_URL:-http://127.0.0.1:2604}","disableAnalytics":true}'
+    volumes:
+      - happy-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3005/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  happy-data:
