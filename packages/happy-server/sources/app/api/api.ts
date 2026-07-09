@@ -58,11 +58,27 @@ export async function startApi(opts: StartApiOptions = {}) {
         (_req, body, done) => done(null, body),
     );
 
-    // Root handler — when not serving a static webapp, return a banner.
-    // When serving a static webapp, @fastify/static handles `/` via its index.
+    // Root handler / mobile custom-server validation.
+    // Official Happy mobile app validates custom servers with:
+    //   GET /  Accept: text/plain
+    // and requires the body to include "Welcome to Happy Server!".
+    // In self-host mode @fastify/static also owns `/`, so we cannot register
+    // another GET `/` route. Intercept plain-text probes via onRequest instead.
     if (!opts.staticDir) {
         app.get('/', function (request, reply) {
-            reply.send('Welcome to Happy Server!');
+            reply.type('text/plain').send('Welcome to Happy Server!');
+        });
+    } else {
+        app.addHook('onRequest', async (request, reply) => {
+            const url = request.raw.url || '';
+            if (request.method !== 'GET' && request.method !== 'HEAD') return;
+            if (!(url === '/' || url.startsWith('/?'))) return;
+            const accept = (request.headers.accept || '').toLowerCase();
+            const wantsPlain =
+                accept.includes('text/plain') &&
+                (!accept.includes('text/html') || accept.indexOf('text/plain') < accept.indexOf('text/html'));
+            if (!wantsPlain) return;
+            return reply.type('text/plain').send('Welcome to Happy Server!');
         });
     }
 
