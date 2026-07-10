@@ -129,6 +129,11 @@ async function serve() {
             // ignore malformed input
         }
     }
+    const disableAccountCreationRaw = (process.env.HAPPY_DISABLE_ACCOUNT_CREATION || "").trim().toLowerCase();
+    const disableAccountCreation = ["1", "true", "yes", "on"].includes(disableAccountCreationRaw);
+    if (disableAccountCreation) {
+        injectHtmlConfig = { ...(injectHtmlConfig || {}), disableAccountCreation: true };
+    }
 
     const { startServer } = await import("./index");
     await startServer({

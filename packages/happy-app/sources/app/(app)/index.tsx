@@ -15,6 +15,10 @@ import { HomeHeaderNotAuth } from "@/components/HomeHeader";
 import { MainView } from "@/components/MainView";
 import { t } from '@/text';
 
+function isAccountCreationDisabled(): boolean {
+    return (globalThis as any).__HAPPY_CONFIG__?.disableAccountCreation === true;
+}
+
 export default function Home() {
     const auth = useAuth();
     if (!auth.isAuthenticated) {
@@ -36,7 +40,13 @@ function NotAuthenticated() {
     const isLandscape = useIsLandscape();
     const insets = useSafeAreaInsets();
 
+    const allowCreateAccount = !isAccountCreationDisabled();
+
     const createAccount = async () => {
+        if (!allowCreateAccount) {
+            console.warn('Account creation is disabled on this server');
+            return;
+        }
         try {
             const secret = await getRandomBytesAsync(32);
             const token = await authGetToken(secret);
@@ -73,6 +83,7 @@ function NotAuthenticated() {
                             }}
                         />
                     </View>
+                    {allowCreateAccount && (
                     <View style={styles.buttonContainerSecondary}>
                         <RoundButton
                             size="normal"
@@ -81,15 +92,18 @@ function NotAuthenticated() {
                             display="inverted"
                         />
                     </View>
+                    )}
                 </>
             ) : (
                 <>
+                    {allowCreateAccount && (
                     <View style={styles.buttonContainer}>
                         <RoundButton
                             title={t('welcome.createAccount')}
                             action={createAccount}
                         />
                     </View>
+                    )}
                     <View style={styles.buttonContainerSecondary}>
                         <RoundButton
                             size="normal"
@@ -134,6 +148,7 @@ function NotAuthenticated() {
                                     }}
                                 />
                             </View>
+                            {allowCreateAccount && (
                             <View style={styles.landscapeButtonContainerSecondary}>
                                 <RoundButton
                                     size="normal"
@@ -142,14 +157,17 @@ function NotAuthenticated() {
                                     display="inverted"
                                 />
                             </View>
+                            )}
                         </>)
                         : (<>
+                            {allowCreateAccount && (
                             <View style={styles.landscapeButtonContainer}>
                                 <RoundButton
                                     title={t('welcome.createAccount')}
                                     action={createAccount}
                                 />
                             </View>
+                            )}
                             <View style={styles.landscapeButtonContainerSecondary}>
                                 <RoundButton
                                     size="normal"

@@ -5,6 +5,11 @@ import { db } from "@/storage/db";
 import { auth } from "@/app/auth/auth";
 import { log } from "@/utils/log";
 
+function isAccountCreationDisabled(): boolean {
+    const raw = (process.env.HAPPY_DISABLE_ACCOUNT_CREATION || "").trim().toLowerCase();
+    return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
 export function authRoutes(app: Fastify) {
     app.post('/v1/auth', {
         schema: {
@@ -26,11 +31,21 @@ export function authRoutes(app: Fastify) {
 
         // Create or update user in database
         const publicKeyHex = privacyKit.encodeHex(publicKey);
-        const user = await db.account.upsert({
-            where: { publicKey: publicKeyHex },
-            update: { updatedAt: new Date() },
-            create: { publicKey: publicKeyHex }
-        });
+        let user = await db.account.findUnique({ where: { publicKey: publicKeyHex } });
+        if (!user) {
+            if (isAccountCreationDisabled()) {
+                log({ module: "auth" }, "Account creation disabled; rejecting new public key");
+                return reply.code(403).send({
+                    error: "Account creation is disabled on this server. Restore an existing account with your secret key or approve from a logged-in device.",
+                });
+            }
+            user = await db.account.create({ data: { publicKey: publicKeyHex } });
+        } else {
+            user = await db.account.update({
+                where: { id: user.id },
+                data: { updatedAt: new Date() },
+            });
+        }
 
         return reply.send({
             success: true,

@@ -12,6 +12,7 @@ services:
       HANDY_MASTER_SECRET: ${HANDY_MASTER_SECRET:?Set HANDY_MASTER_SECRET in .env}
       PUBLIC_URL: ${PUBLIC_URL:-http://127.0.0.1:2604}
       LOCAL_UPLOAD_DIR: /data/workspace/happy-uploads
+      HAPPY_DISABLE_ACCOUNT_CREATION: "1"
       HAPPY_INJECT_HTML_CONFIG: '{"serverUrl":"${PUBLIC_URL:-http://127.0.0.1:2604}","disableAnalytics":true}'
     volumes:
       - happy-data:/data
