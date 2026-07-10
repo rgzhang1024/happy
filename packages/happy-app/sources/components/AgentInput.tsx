@@ -1251,7 +1251,6 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                             ))}
                         </View>
                     )}
-                    )}
                     {/* Input field */}
                     <View style={[styles.inputContainer, props.minHeight ? { minHeight: props.minHeight } : undefined]}>
                         <MultiTextInput
