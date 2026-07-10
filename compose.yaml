@@ -11,9 +11,11 @@ services:
     environment:
       HANDY_MASTER_SECRET: ${HANDY_MASTER_SECRET:?Set HANDY_MASTER_SECRET in .env}
       PUBLIC_URL: ${PUBLIC_URL:-http://127.0.0.1:2604}
+      LOCAL_UPLOAD_DIR: /data/workspace/happy-uploads
       HAPPY_INJECT_HTML_CONFIG: '{"serverUrl":"${PUBLIC_URL:-http://127.0.0.1:2604}","disableAnalytics":true}'
     volumes:
       - happy-data:/data
+      - /data/workspace/happy-uploads:/data/workspace/happy-uploads
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3005/health"]
       interval: 30s

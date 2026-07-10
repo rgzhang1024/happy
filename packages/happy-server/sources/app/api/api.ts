@@ -23,6 +23,7 @@ import { feedRoutes } from "./routes/feedRoutes";
 import { kvRoutes } from "./routes/kvRoutes";
 import { v3SessionRoutes } from "./routes/v3SessionRoutes";
 import { attachmentRoutes } from "./routes/attachmentRoutes";
+import { localUploadRoutes } from "./routes/localUploadRoutes";
 import { isLocalStorage, getLocalFilesDir } from "@/storage/files";
 import * as path from "path";
 import * as fs from "fs";
@@ -128,6 +129,7 @@ export async function startApi(opts: StartApiOptions = {}) {
     kvRoutes(typed);
     v3SessionRoutes(typed);
     attachmentRoutes(typed);
+    localUploadRoutes(typed);
 
     // Static webapp (self-host mode)
     if (opts.staticDir) {

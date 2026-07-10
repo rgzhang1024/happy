@@ -4,6 +4,7 @@ import { View, Platform, useWindowDimensions, ViewStyle, Text, ActivityIndicator
 import { Image } from 'expo-image';
 import { AgentInputAttachmentStrip } from './AgentInputAttachmentStrip';
 import type { AttachmentPreview } from '@/sync/attachmentTypes';
+import type { LocalFilePreview } from '@/hooks/useLocalFileUpload';
 import { generateThumbhash } from '@/utils/thumbhash';
 import { layout } from './layout';
 import { MultiTextInput, KeyPressEvent } from './MultiTextInput';
@@ -91,6 +92,10 @@ interface AgentInputProps {
     onPickImages?: () => void;
     onRemoveImage?: (id: string) => void;
     onAddImages?: (images: AttachmentPreview[]) => void;
+    /** Local plaintext file uploads (path markers in chat text). */
+    selectedLocalFiles?: LocalFilePreview[];
+    onPickLocalFiles?: () => void;
+    onRemoveLocalFile?: (id: string) => void;
 }
 
 const MAX_CONTEXT_SIZE = 190000;
@@ -554,9 +559,10 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
     // never blocks the next character from landing in the textarea.
     const [hasText, setHasText] = React.useState(() => props.initialValue.trim().length > 0);
     const hasImages = (props.selectedImages?.length ?? 0) > 0;
+    const hasLocalFiles = (props.selectedLocalFiles?.length ?? 0) > 0;
     const canPressSendButton = !props.isSending
         && !props.isSendDisabled
-        && (isSendBlocked ? (hasText || hasImages) : (hasText || hasImages || !!props.onMicPress));
+        && (isSendBlocked ? (hasText || hasImages || hasLocalFiles) : (hasText || hasImages || hasLocalFiles || !!props.onMicPress));
 
     // Check if this is a Codex, Gemini, or OpenClaw session
     // Use metadata.flavor for existing sessions, agentType prop for new sessions
@@ -814,12 +820,12 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
         hapticsLight();
         // Live read avoids stalling behind the transitioned `hasText`.
         const liveHasText = (inputRef.current?.getText() ?? '').trim().length > 0;
-        if (liveHasText || hasImages) {
+        if (liveHasText || hasImages || hasLocalFiles) {
             props.onSend();
         } else {
             props.onMicPress?.();
         }
-    }, [handleBlockedSendAttempt, hasImages, isSendBlocked, props.isSendDisabled, props.isSending, props.onSend, props.onMicPress]);
+    }, [handleBlockedSendAttempt, hasImages, hasLocalFiles, isSendBlocked, props.isSendDisabled, props.isSending, props.onSend, props.onMicPress]);
 
     // Handle keyboard navigation
     const handleKeyPress = React.useCallback((event: KeyPressEvent): boolean => {
@@ -1203,6 +1209,49 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                             onRemove={props.onRemoveImage ?? (() => {})}
                         />
                     )}
+                    {props.selectedLocalFiles && props.selectedLocalFiles.length > 0 && (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 8, paddingTop: 6, paddingBottom: 2 }}>
+                            {props.selectedLocalFiles.map((file) => (
+                                <View
+                                    key={file.id}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        backgroundColor: theme.colors.surface,
+                                        borderRadius: 12,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 6,
+                                        maxWidth: '100%',
+                                    }}
+                                >
+                                    <Ionicons
+                                        name={file.status === 'error' ? 'alert-circle-outline' : 'document-attach-outline'}
+                                        size={14}
+                                        color={theme.colors.textSecondary}
+                                    />
+                                    <Text
+                                        numberOfLines={1}
+                                        style={{
+                                            fontSize: 12,
+                                            color: theme.colors.text,
+                                            maxWidth: 180,
+                                            ...Typography.default(),
+                                        }}
+                                    >
+                                        {file.name}{file.status === 'uploading' ? '…' : file.status === 'error' ? ' !' : ''}
+                                    </Text>
+                                    <Pressable
+                                        onPress={() => props.onRemoveLocalFile?.(file.id)}
+                                        hitSlop={8}
+                                    >
+                                        <Ionicons name='close' size={14} color={theme.colors.textSecondary} />
+                                    </Pressable>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                    )}
                     {/* Input field */}
                     <View style={[styles.inputContainer, props.minHeight ? { minHeight: props.minHeight } : undefined]}>
                         <MultiTextInput
@@ -1343,6 +1392,32 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                             name="image-outline"
                                             size={16}
                                             color={(props.selectedImages?.length ?? 0) > 0
+                                                ? theme.colors.radio.active
+                                                : theme.colors.button.secondary.tint}
+                                        />
+                                    </Pressable>
+                                )}
+
+                                {/* Local file attachment button (path markers) */}
+                                {props.onPickLocalFiles && (
+                                    <Pressable
+                                        onPress={props.onPickLocalFiles}
+                                        hitSlop={{ top: 5, bottom: 10, left: 0, right: 0 }}
+                                        style={(p) => ({
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            borderRadius: Platform.select({ default: 16, android: 20 }),
+                                            paddingHorizontal: 8,
+                                            paddingVertical: 6,
+                                            justifyContent: 'center',
+                                            height: 32,
+                                            opacity: p.pressed ? 0.7 : 1,
+                                        })}
+                                    >
+                                        <Ionicons
+                                            name='attach-outline'
+                                            size={16}
+                                            color={(props.selectedLocalFiles?.length ?? 0) > 0
                                                 ? theme.colors.radio.active
                                                 : theme.colors.button.secondary.tint}
                                         />

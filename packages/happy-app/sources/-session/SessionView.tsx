@@ -20,6 +20,7 @@ import { Avatar } from '@/components/Avatar';
 import { VoiceAssistantStatusBar } from '@/components/VoiceAssistantStatusBar';
 import { useDraft } from '@/hooks/useDraft';
 import { useImagePicker } from '@/hooks/useImagePicker';
+import { useLocalFileUpload } from '@/hooks/useLocalFileUpload';
 import { Modal } from '@/modal';
 import { voiceHooks } from '@/realtime/hooks/voiceHooks';
 import { getCurrentVoiceConversationId, getCurrentVoiceSessionDurationSeconds, startRealtimeSession, stopRealtimeSession } from '@/realtime/RealtimeSession';
@@ -497,6 +498,14 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
     // Image attachment state (expImageUpload feature flag)
     const expImageUpload = useSetting('expImageUpload');
     const { selectedImages, pickImages, removeImage, clearImages, addImages } = useImagePicker();
+    // Local plaintext file uploads → [附件N:path] markers in chat text
+    const {
+        selectedFiles: selectedLocalFiles,
+        pickFiles: pickLocalFiles,
+        removeFile: removeLocalFile,
+        clearFiles: clearLocalFiles,
+        ensureUploaded: ensureLocalFilesUploaded,
+    } = useLocalFileUpload();
 
     // ChatComposer owns the message state + useDraft subscription. We only
     // hold an imperative handle so handleSend can read the live text and
@@ -541,15 +550,53 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
 
     // handleSend reads the live message via the composer ref, so it doesn't
     // need to re-create on every keystroke.
-    const handleSend = React.useCallback(() => {
+    const handleSend = React.useCallback(async () => {
         const liveMessage = composerHandleRef.current?.getMessage() ?? '';
-        if (liveMessage.trim() || (expImageUpload && selectedImages.length > 0)) {
-            const attachments = expImageUpload ? selectedImages : undefined;
-            composerHandleRef.current?.clearMessage();
-            if (expImageUpload) clearImages();
-            sync.sendMessage(sessionId, liveMessage, { source: 'chat', attachments });
+        const hasLocal = selectedLocalFiles.length > 0;
+        if (!(liveMessage.trim() || (expImageUpload && selectedImages.length > 0) || hasLocal)) {
+            return;
         }
-    }, [sessionId, expImageUpload, selectedImages, clearImages]);
+
+        let textToSend = liveMessage;
+        if (hasLocal) {
+            try {
+                const uploaded = await ensureLocalFilesUploaded(sessionId);
+                const failed = uploaded.filter((f) => f.status === 'error');
+                const ready = uploaded.filter((f) => f.status === 'ready' && f.path);
+                if (failed.length > 0) {
+                    Modal.alert(
+                        'Upload failed',
+                        failed.map((f) => (f.name + ': ' + (f.error ?? 'error'))).join('\n'),
+                    );
+                }
+                if (ready.length === 0 && !liveMessage.trim() && !(expImageUpload && selectedImages.length > 0)) {
+                    return;
+                }
+                if (ready.length > 0) {
+                    const markers = ready.map((f, i) => ('[附件' + (i + 1) + ':' + f.path + ']')).join('\n');
+                    textToSend = liveMessage.trim() ? (liveMessage.trim() + '\n\n' + markers) : markers;
+                }
+            } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                Modal.alert('Upload failed', message);
+                return;
+            }
+        }
+
+        const attachments = expImageUpload ? selectedImages : undefined;
+        composerHandleRef.current?.clearMessage();
+        if (expImageUpload) clearImages();
+        if (hasLocal) clearLocalFiles();
+        sync.sendMessage(sessionId, textToSend, { source: 'chat', attachments });
+    }, [
+        sessionId,
+        expImageUpload,
+        selectedImages,
+        clearImages,
+        selectedLocalFiles,
+        ensureLocalFilesUploaded,
+        clearLocalFiles,
+    ]);
 
     const handleAbort = React.useCallback(() => {
         storage.getState().resetSessionAgentOverrides(sessionId);
@@ -724,6 +771,9 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
             onPickImages={expImageUpload ? pickImages : undefined}
             onRemoveImage={expImageUpload ? removeImage : undefined}
             onAddImages={expImageUpload ? addImages : undefined}
+            selectedLocalFiles={selectedLocalFiles}
+            onPickLocalFiles={pickLocalFiles}
+            onRemoveLocalFile={removeLocalFile}
             autocompletePrefixes={AGENT_INPUT_AUTOCOMPLETE_PREFIXES}
             autocompleteSuggestions={handleAutocompleteSuggestions}
             usageData={usageData}
