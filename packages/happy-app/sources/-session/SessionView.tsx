@@ -501,11 +501,11 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
     // Local plaintext file uploads → [附件N:path] markers in chat text
     const {
         selectedFiles: selectedLocalFiles,
+        isUploading: localFilesUploading,
         pickFiles: pickLocalFiles,
         removeFile: removeLocalFile,
         clearFiles: clearLocalFiles,
-        ensureUploaded: ensureLocalFilesUploaded,
-    } = useLocalFileUpload();
+    } = useLocalFileUpload(sessionId);
 
     // ChatComposer owns the message state + useDraft subscription. We only
     // hold an imperative handle so handleSend can read the live text and
@@ -550,43 +550,28 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
 
     // handleSend reads the live message via the composer ref, so it doesn't
     // need to re-create on every keystroke.
-    const handleSend = React.useCallback(async () => {
+    const handleSend = React.useCallback(() => {
         const liveMessage = composerHandleRef.current?.getMessage() ?? '';
-        const hasLocal = selectedLocalFiles.length > 0;
+        const readyLocal = selectedLocalFiles.filter((f) => f.status === 'ready' && f.path);
+        const hasLocal = readyLocal.length > 0;
+        if (localFilesUploading) {
+            Modal.alert('请稍候', '需等待上传完成');
+            return;
+        }
         if (!(liveMessage.trim() || (expImageUpload && selectedImages.length > 0) || hasLocal)) {
             return;
         }
 
         let textToSend = liveMessage;
         if (hasLocal) {
-            try {
-                const uploaded = await ensureLocalFilesUploaded(sessionId);
-                const failed = uploaded.filter((f) => f.status === 'error');
-                const ready = uploaded.filter((f) => f.status === 'ready' && f.path);
-                if (failed.length > 0) {
-                    Modal.alert(
-                        'Upload failed',
-                        failed.map((f) => (f.name + ': ' + (f.error ?? 'error'))).join('\n'),
-                    );
-                }
-                if (ready.length === 0 && !liveMessage.trim() && !(expImageUpload && selectedImages.length > 0)) {
-                    return;
-                }
-                if (ready.length > 0) {
-                    const markers = ready.map((f, i) => ('[附件' + (i + 1) + ':' + f.path + ']')).join('\n');
-                    textToSend = liveMessage.trim() ? (liveMessage.trim() + '\n\n' + markers) : markers;
-                }
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                Modal.alert('Upload failed', message);
-                return;
-            }
+            const markers = readyLocal.map((f, i) => ('[附件' + (i + 1) + ':' + f.path + ']')).join('\n');
+            textToSend = liveMessage.trim() ? (liveMessage.trim() + '\n\n' + markers) : markers;
         }
 
         const attachments = expImageUpload ? selectedImages : undefined;
         composerHandleRef.current?.clearMessage();
         if (expImageUpload) clearImages();
-        if (hasLocal) clearLocalFiles();
+        if (selectedLocalFiles.length > 0) clearLocalFiles();
         sync.sendMessage(sessionId, textToSend, { source: 'chat', attachments });
     }, [
         sessionId,
@@ -594,7 +579,7 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
         selectedImages,
         clearImages,
         selectedLocalFiles,
-        ensureLocalFilesUploaded,
+        localFilesUploading,
         clearLocalFiles,
     ]);
 
@@ -772,6 +757,7 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
             onRemoveImage={expImageUpload ? removeImage : undefined}
             onAddImages={expImageUpload ? addImages : undefined}
             selectedLocalFiles={selectedLocalFiles}
+            localFilesUploading={localFilesUploading}
             onPickLocalFiles={pickLocalFiles}
             onRemoveLocalFile={removeLocalFile}
             autocompletePrefixes={AGENT_INPUT_AUTOCOMPLETE_PREFIXES}

@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { AgentInputAttachmentStrip } from './AgentInputAttachmentStrip';
 import type { AttachmentPreview } from '@/sync/attachmentTypes';
 import type { LocalFilePreview } from '@/hooks/useLocalFileUpload';
+import { Modal } from '@/modal';
 import { generateThumbhash } from '@/utils/thumbhash';
 import { layout } from './layout';
 import { MultiTextInput, KeyPressEvent } from './MultiTextInput';
@@ -96,6 +97,8 @@ interface AgentInputProps {
     selectedLocalFiles?: LocalFilePreview[];
     onPickLocalFiles?: () => void;
     onRemoveLocalFile?: (id: string) => void;
+    /** True while any local file is still uploading. */
+    localFilesUploading?: boolean;
 }
 
 const MAX_CONTEXT_SIZE = 190000;
@@ -560,6 +563,8 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
     const [hasText, setHasText] = React.useState(() => props.initialValue.trim().length > 0);
     const hasImages = (props.selectedImages?.length ?? 0) > 0;
     const hasLocalFiles = (props.selectedLocalFiles?.length ?? 0) > 0;
+    const localFilesUploading = props.localFilesUploading
+        ?? (props.selectedLocalFiles?.some((f) => f.status === 'uploading' || f.status === 'pending') ?? false);
     const canPressSendButton = !props.isSending
         && !props.isSendDisabled
         && (isSendBlocked ? (hasText || hasImages || hasLocalFiles) : (hasText || hasImages || hasLocalFiles || !!props.onMicPress));
@@ -816,6 +821,10 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
             return;
         }
         if (props.isSendDisabled || props.isSending) return;
+        if (localFilesUploading) {
+            Modal.alert('请稍候', '需等待上传完成');
+            return;
+        }
 
         hapticsLight();
         // Live read avoids stalling behind the transitioned `hasText`.
@@ -825,7 +834,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
         } else {
             props.onMicPress?.();
         }
-    }, [handleBlockedSendAttempt, hasImages, hasLocalFiles, isSendBlocked, props.isSendDisabled, props.isSending, props.onSend, props.onMicPress]);
+    }, [handleBlockedSendAttempt, hasImages, hasLocalFiles, localFilesUploading, isSendBlocked, props.isSendDisabled, props.isSending, props.onSend, props.onMicPress]);
 
     // Handle keyboard navigation
     const handleKeyPress = React.useCallback((event: KeyPressEvent): boolean => {
@@ -1226,9 +1235,19 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                     }}
                                 >
                                     <Ionicons
-                                        name={file.status === 'error' ? 'alert-circle-outline' : 'document-attach-outline'}
+                                        name={
+                                            file.status === 'error'
+                                                ? 'alert-circle-outline'
+                                                : file.status === 'ready'
+                                                    ? 'checkmark-circle'
+                                                    : 'document-attach-outline'
+                                        }
                                         size={14}
-                                        color={theme.colors.textSecondary}
+                                        color={
+                                            file.status === 'ready'
+                                                ? theme.colors.radio.active
+                                                : theme.colors.textSecondary
+                                        }
                                     />
                                     <Text
                                         numberOfLines={1}
@@ -1239,7 +1258,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                             ...Typography.default(),
                                         }}
                                     >
-                                        {file.name}{file.status === 'uploading' ? '…' : file.status === 'error' ? ' !' : ''}
+                                        {file.name}{file.status === 'uploading' || file.status === 'pending' ? '…' : file.status === 'error' ? ' !' : ''}
                                     </Text>
                                     <Pressable
                                         onPress={() => props.onRemoveLocalFile?.(file.id)}
@@ -1429,7 +1448,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                     style={[
                                         styles.sendButton,
                                         isSendBlocked ? styles.sendButtonLocked :
-                                        (hasText || props.isSending || (props.onMicPress && !props.isMicActive))
+                                        (!localFilesUploading && (hasText || props.isSending || (props.onMicPress && !props.isMicActive)))
                                             ? styles.sendButtonActive
                                             : styles.sendButtonInactive
                                     ]}

@@ -11,7 +11,7 @@ import * as crypto from "crypto";
 import { Fastify } from "../types";
 import { db } from "@/storage/db";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const UPLOAD_RATE_WINDOW_MS = 60_000;
 const UPLOAD_RATE_MAX = 60;
 const MAX_SAFE_NAME_LEN = 128;
@@ -134,7 +134,7 @@ export function localUploadRoutes(app: Fastify) {
             return reply.code(400).send({ error: "Empty file" });
         }
         if (body.length > MAX_FILE_SIZE) {
-            return reply.code(413).send({ error: "File too large (max 10MB)" });
+            return reply.code(413).send({ error: "File too large (max 50MB)" });
         }
 
         const safeName = sanitizeFilename(request.query.filename);

@@ -6,7 +6,7 @@
 import { AuthCredentials } from "@/auth/tokenStorage";
 import { getServerUrl } from "./serverConfig";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export type LocalUploadResult = {
     path: string;
@@ -18,6 +18,7 @@ export async function uploadLocalFile(
     credentials: AuthCredentials,
     sessionId: string,
     file: { name: string; data: Uint8Array | ArrayBuffer | Blob },
+    opts?: { signal?: AbortSignal },
 ): Promise<LocalUploadResult> {
     const API_ENDPOINT = getServerUrl();
     const filename = encodeURIComponent(file.name || "file.bin");
@@ -32,7 +33,6 @@ export async function uploadLocalFile(
         body = file.data;
         sizeHint = file.data.byteLength;
     } else {
-        // Ensure a standalone ArrayBuffer of exact length (RN-safe).
         const standalone = new Uint8Array(file.data);
         body = standalone.buffer;
         sizeHint = standalone.byteLength;
@@ -51,8 +51,12 @@ export async function uploadLocalFile(
                 "Content-Type": "application/octet-stream",
             },
             body,
+            signal: opts?.signal,
         });
     } catch (err) {
+        if (opts?.signal?.aborted) {
+            throw new DOMException("Upload aborted", "AbortError");
+        }
         const message = err instanceof Error ? err.message : String(err);
         throw new Error(message ? `Local upload network error: ${message}` : "Local upload network error");
     }
