@@ -34,6 +34,9 @@ describe('modelModeOptions', () => {
         const models = getCodexModelModes();
         expect(models.map((model) => model.key)).toEqual([
             'default',
+            'gpt-5.6-sol',
+            'gpt-5.6-terra',
+            'gpt-5.6-luna',
             'gpt-5.5',
             'gpt-5.4',
             'gpt-5.3-codex',
@@ -43,7 +46,7 @@ describe('modelModeOptions', () => {
             'gpt-5.1-codex-mini',
         ]);
         expect(models[0].name).toBe('default model');
-        expect(models[1].name).toBe('gpt-5.5');
+        expect(models[1].name).toBe('gpt-5.6-sol');
     });
 
     it('uses code defaults for agent defaults', () => {
@@ -51,7 +54,7 @@ describe('modelModeOptions', () => {
         expect(getDefaultModelKey('claude')).toBe('opus');
         expect(getDefaultEffortKey('claude')).toBe('medium');
         expect(getDefaultPermissionModeKey('codex')).toBe('yolo');
-        expect(getDefaultModelKey('codex')).toBe('gpt-5.5');
+        expect(getDefaultModelKey('codex')).toBe('default');
         expect(getDefaultEffortKey('codex')).toBe('medium');
     });
 

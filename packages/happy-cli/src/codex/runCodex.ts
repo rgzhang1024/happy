@@ -70,7 +70,9 @@ function describeCodexFailure(msg: any): string | null {
     return 'Unknown error';
 }
 
-const DEFAULT_CODEX_MODEL = 'gpt-5.5';
+// Leave the model unset unless the user explicitly chooses one. This lets the
+// installed Codex version select its current default from its live catalog.
+const DEFAULT_CODEX_MODEL: string | undefined = undefined;
 const DEFAULT_CODEX_EFFORT: ReasoningEffort = 'medium';
 const DEFAULT_CODEX_PERMISSION_MODE: PermissionMode = 'yolo';
 
@@ -254,6 +256,7 @@ export async function runCodex(opts: {
     let currentPermissionMode: PermissionMode | undefined = initialPermissionMode;
     let currentModel: string | undefined = DEFAULT_CODEX_MODEL;
     let currentEffort: ReasoningEffort | undefined = DEFAULT_CODEX_EFFORT;
+    let codexDefaultModel: string | undefined;
     let currentAppendSystemPrompt: string | undefined = undefined;
 
     const resetCurrentModeDefaults = () => {
@@ -308,6 +311,10 @@ export async function runCodex(opts: {
             messageModel = message.meta.model || undefined;
             currentModel = messageModel;
             logger.debug(`[Codex] Model updated from user message: ${messageModel || 'reset to default'}`);
+            session.updateMetadata((currentMetadata) => ({
+                ...currentMetadata,
+                currentModelCode: messageModel ?? codexDefaultModel,
+            }));
         } else {
             logger.debug(`[Codex] User message received with no model override, using current: ${currentModel || 'default'}`);
         }
@@ -805,6 +812,25 @@ export async function runCodex(opts: {
         await client.connect();
         logger.debug('[codex]: client.connect done');
 
+        try {
+            const catalog = await client.listModels();
+            if (catalog.models.length > 0) {
+                codexDefaultModel = catalog.defaultModel;
+                session.updateMetadata((currentMetadata) => ({
+                    ...currentMetadata,
+                    models: catalog.models,
+                    currentModelCode: currentModel ?? catalog.defaultModel,
+                }));
+                logger.debug(
+                    `[Codex] Published ${catalog.models.length} models from model/list; default=${catalog.defaultModel ?? 'unknown'}`,
+                );
+            }
+        } catch (error) {
+            // Older Codex versions may not expose model/list. The app keeps its
+            // built-in model list when metadata.models is absent.
+            logger.warn('[Codex] Failed to load dynamic model catalog; using app fallback list', error);
+        }
+
         if (opts.resumeThreadId) {
             await resumeExistingThread({
                 client,
@@ -925,9 +951,11 @@ export async function runCodex(opts: {
                         mcpServers,
                     });
                     activeThreadId = startedThread.threadId;
+                    codexDefaultModel ??= startedThread.model;
                     session.updateMetadata((currentMetadata) => ({
                         ...currentMetadata,
                         codexThreadId: startedThread.threadId,
+                        currentModelCode: message.mode.model ?? startedThread.model,
                     }));
                 }
 

@@ -138,6 +138,87 @@ describe('CodexAppServerClient sandbox integration', () => {
         expect(new CodexAppServerClient().supportsGoalActions()).toBe(false);
     });
 
+    it('lists visible Codex models across pages and de-duplicates them', async () => {
+        const requests: MockRpcMessage[] = [];
+        mockSpawn.mockImplementation(() => createMockProcess({
+            onRequest: (msg, stdout) => {
+                requests.push(msg);
+                if (msg.method !== 'model/list' || msg.id == null) return;
+
+                if (msg.params?.cursor === null) {
+                    pushJsonLine(stdout, {
+                        id: msg.id,
+                        result: {
+                            data: [
+                                {
+                                    id: 'gpt-5.6-sol',
+                                    model: 'gpt-5.6-sol',
+                                    displayName: 'GPT-5.6-Sol',
+                                    description: 'Latest frontier model',
+                                    hidden: false,
+                                    isDefault: true,
+                                },
+                                {
+                                    id: 'internal-model',
+                                    model: 'internal-model',
+                                    displayName: 'Internal',
+                                    description: 'Hidden',
+                                    hidden: true,
+                                    isDefault: false,
+                                },
+                            ],
+                            nextCursor: 'page-2',
+                        },
+                    });
+                    return;
+                }
+
+                pushJsonLine(stdout, {
+                    id: msg.id,
+                    result: {
+                        data: [
+                            {
+                                id: 'gpt-5.6-sol-copy',
+                                model: 'gpt-5.6-sol',
+                                displayName: 'Duplicate',
+                                description: 'Duplicate',
+                                hidden: false,
+                                isDefault: false,
+                            },
+                            {
+                                id: 'gpt-5.6-terra',
+                                model: 'gpt-5.6-terra',
+                                displayName: 'GPT-5.6-Terra',
+                                description: 'Balanced model',
+                                hidden: false,
+                                isDefault: false,
+                            },
+                        ],
+                        nextCursor: null,
+                    },
+                });
+            },
+        }));
+
+        const { CodexAppServerClient } = await import('./codexAppServerClient');
+        const client = new CodexAppServerClient();
+        await client.connect();
+
+        await expect(client.listModels()).resolves.toEqual({
+            models: [
+                { code: 'gpt-5.6-sol', value: 'GPT-5.6-Sol', description: 'Latest frontier model' },
+                { code: 'gpt-5.6-terra', value: 'GPT-5.6-Terra', description: 'Balanced model' },
+            ],
+            defaultModel: 'gpt-5.6-sol',
+        });
+        expect(requests.filter((request) => request.method === 'model/list').map((request) => request.params)).toEqual([
+            { cursor: null, limit: 100, includeHidden: false },
+            { cursor: 'page-2', limit: 100, includeHidden: false },
+        ]);
+
+        await client.disconnect();
+    });
+
     it('wraps transport when sandbox is enabled', async () => {
         // Dynamic import to ensure mocks are applied
         const { CodexAppServerClient } = await import('./codexAppServerClient');

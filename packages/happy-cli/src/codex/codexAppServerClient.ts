@@ -58,6 +58,11 @@ type PendingRequest = {
     epoch: number;
 };
 
+export type CodexModelCatalog = {
+    models: Array<{ code: string; value: string; description: string | null }>;
+    defaultModel?: string;
+};
+
 type LegacyPatchChanges = Record<string, Record<string, unknown>>;
 
 export type ApprovalHandler = (params: {
@@ -247,6 +252,83 @@ export class CodexAppServerClient {
 
     supportsGoalActions(): boolean {
         return isGoalActionsAvailable();
+    }
+
+    /**
+     * Read the model picker catalog from Codex itself.
+     *
+     * Keep pagination, filtering, and de-duplication here so callers can use
+     * this as an optional capability and retain their built-in fallback list
+     * if an older app-server does not implement model/list.
+     */
+    async listModels(): Promise<CodexModelCatalog> {
+        type ModelListEntry = {
+            id?: unknown;
+            model?: unknown;
+            displayName?: unknown;
+            description?: unknown;
+            hidden?: unknown;
+            isDefault?: unknown;
+        };
+        type ModelListResponse = {
+            data?: unknown;
+            nextCursor?: unknown;
+        };
+
+        const models = new Map<string, { code: string; value: string; description: string | null }>();
+        const seenCursors = new Set<string>();
+        let cursor: string | null = null;
+        let defaultModel: string | undefined;
+
+        for (let page = 0; page < 100; page += 1) {
+            const result = await this.request('model/list', {
+                cursor,
+                limit: 100,
+                includeHidden: false,
+            }) as ModelListResponse;
+
+            if (!Array.isArray(result.data)) {
+                throw new Error('model/list returned an invalid model catalog');
+            }
+
+            for (const rawEntry of result.data as ModelListEntry[]) {
+                if (!rawEntry || typeof rawEntry !== 'object' || rawEntry.hidden === true) {
+                    continue;
+                }
+                const code = typeof rawEntry.model === 'string' && rawEntry.model.length > 0
+                    ? rawEntry.model
+                    : (typeof rawEntry.id === 'string' ? rawEntry.id : '');
+                if (!code) {
+                    continue;
+                }
+                if (rawEntry.isDefault === true) {
+                    defaultModel = code;
+                }
+                if (models.has(code)) {
+                    continue;
+                }
+                models.set(code, {
+                    code,
+                    value: typeof rawEntry.displayName === 'string' && rawEntry.displayName.length > 0
+                        ? rawEntry.displayName
+                        : code,
+                    description: typeof rawEntry.description === 'string'
+                        ? rawEntry.description
+                        : null,
+                });
+            }
+
+            const nextCursor = typeof result.nextCursor === 'string' && result.nextCursor.length > 0
+                ? result.nextCursor
+                : null;
+            if (!nextCursor || seenCursors.has(nextCursor)) {
+                break;
+            }
+            seenCursors.add(nextCursor);
+            cursor = nextCursor;
+        }
+
+        return { models: Array.from(models.values()), defaultModel };
     }
 
     setEventHandler(handler: (msg: EventMsg) => void): void {
