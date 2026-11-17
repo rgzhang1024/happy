@@ -1,0 +1,40 @@
+# Reproducible local Happy CLI artifact build. This does not affect the server image.
+FROM node:20 AS deps
+
+RUN apt-get update && apt-get install -y python3 make g++ build-essential && rm -rf /var/lib/apt/lists/*
+RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
+
+WORKDIR /repo
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY scripts ./scripts
+COPY patches ./patches
+
+RUN mkdir -p packages/happy-app packages/happy-server packages/happy-cli packages/happy-agent packages/happy-wire
+
+COPY packages/happy-app/package.json packages/happy-app/
+COPY packages/happy-server/package.json packages/happy-server/
+COPY packages/happy-cli/package.json packages/happy-cli/
+COPY packages/happy-agent/package.json packages/happy-agent/
+COPY packages/happy-wire/package.json packages/happy-wire/
+
+COPY packages/happy-app/patches packages/happy-app/patches
+COPY packages/happy-server/prisma packages/happy-server/prisma
+COPY packages/happy-cli/scripts packages/happy-cli/scripts
+COPY packages/happy-cli/tools packages/happy-cli/tools
+
+RUN SKIP_HAPPY_WIRE_BUILD=1 pnpm install --frozen-lockfile
+
+FROM deps AS cli-verify
+
+COPY packages/happy-wire ./packages/happy-wire
+COPY packages/happy-cli ./packages/happy-cli
+
+RUN pnpm --filter @slopus/happy-wire build
+RUN pnpm --filter happy typecheck
+RUN pnpm --filter happy build
+RUN pnpm --filter happy exec vitest run --project unit
+RUN mkdir -p /out && cd packages/happy-cli && pnpm pack --pack-destination /out
+
+FROM scratch AS cli-artifact
+COPY --from=cli-verify /out/ /

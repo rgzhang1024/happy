@@ -21,6 +21,34 @@ describe('MetadataSchema', () => {
         expect(metadata.archivedBy).toBe('cli');
         expect(metadata.archiveReason).toBe('User terminated');
     });
+
+    it('preserves Codex usage limits and ignores a malformed snapshot', () => {
+        const metadata = MetadataSchema.parse({
+            path: '/tmp/project',
+            host: 'local-machine',
+            flavor: 'codex',
+            usageLimits: {
+                capturedAt: 1700000000000,
+                source: 'codex',
+                windows: [
+                    { id: 'five_hour', usedPercent: 100, resetsAt: 1787724782 },
+                    { id: 'seven_day', usedPercent: 16, resetsAt: 1788311582 },
+                ],
+                resetCreditsAvailable: 1,
+                rateLimitReached: true,
+            },
+        });
+
+        expect(metadata.usageLimits?.windows).toHaveLength(2);
+        expect(metadata.usageLimits?.resetCreditsAvailable).toBe(1);
+
+        const withoutBrokenLimits = MetadataSchema.parse({
+            path: '/tmp/project',
+            host: 'local-machine',
+            usageLimits: { windows: 'nope' },
+        });
+        expect(withoutBrokenLimits.usageLimits).toBeUndefined();
+    });
 });
 
 describe('AgentGoalStatusSchema', () => {

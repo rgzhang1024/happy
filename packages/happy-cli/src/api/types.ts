@@ -324,6 +324,21 @@ export type Metadata = {
   /** Lineage for sessions created via the fork / duplicate flow. */
   parentSessionId?: string
   forkedFromMessageId?: string
+  /** Account-level Codex plan limits. Optional; absent on older CLIs / non-Codex sessions. */
+  usageLimits?: {
+    capturedAt: number
+    source?: string
+    windows: Array<{
+      id: string
+      label?: string
+      usedPercent: number
+      resetsAt?: number | null
+      windowDurationMins?: number | null
+    }>
+    resetCreditsAvailable?: number
+    planType?: string | null
+    rateLimitReached?: boolean
+  }
 };
 
 export type AgentGoalStatus = {

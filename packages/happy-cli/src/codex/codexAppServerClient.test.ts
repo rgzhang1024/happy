@@ -219,6 +219,66 @@ describe('CodexAppServerClient sandbox integration', () => {
         await client.disconnect();
     });
 
+    it('reads account rate limits from app-server', async () => {
+        const requests: MockRpcMessage[] = [];
+        mockSpawn.mockImplementation(() => createMockProcess({
+            onRequest: (msg, stdout) => {
+                requests.push(msg);
+                if (msg.method !== 'account/rateLimits/read' || msg.id == null) return;
+                pushJsonLine(stdout, {
+                    id: msg.id,
+                    result: {
+                        rateLimits: {
+                            primary: { usedPercent: 12, windowDurationMins: 300, resetsAt: 100 },
+                            secondary: { usedPercent: 4, windowDurationMins: 10080, resetsAt: 200 },
+                        },
+                    },
+                });
+            },
+        }));
+
+        const { CodexAppServerClient } = await import('./codexAppServerClient');
+        const client = new CodexAppServerClient();
+        await client.connect();
+
+        await expect(client.readRateLimits()).resolves.toEqual({
+            rateLimits: {
+                primary: { usedPercent: 12, windowDurationMins: 300, resetsAt: 100 },
+                secondary: { usedPercent: 4, windowDurationMins: 10080, resetsAt: 200 },
+            },
+        });
+        expect(requests.some((request) => request.method === 'account/rateLimits/read')).toBe(true);
+
+        await client.disconnect();
+    });
+
+    it('reads account rate limits from app-server', async () => {
+        mockSpawn.mockImplementation(() => createMockProcess({
+            onRequest: (msg, stdout) => {
+                if (msg.method === 'account/rateLimits/read' && msg.id != null) {
+                    pushJsonLine(stdout, {
+                        id: msg.id,
+                        result: {
+                            rateLimits: {
+                                primary: { usedPercent: 12, windowDurationMins: 300, resetsAt: 100 },
+                            },
+                        },
+                    });
+                }
+            },
+        }));
+
+        const { CodexAppServerClient } = await import('./codexAppServerClient');
+        const client = new CodexAppServerClient();
+        await client.connect();
+        await expect(client.readRateLimits()).resolves.toEqual({
+            rateLimits: {
+                primary: { usedPercent: 12, windowDurationMins: 300, resetsAt: 100 },
+            },
+        });
+        await client.disconnect();
+    });
+
     it('wraps transport when sandbox is enabled', async () => {
         // Dynamic import to ensure mocks are applied
         const { CodexAppServerClient } = await import('./codexAppServerClient');

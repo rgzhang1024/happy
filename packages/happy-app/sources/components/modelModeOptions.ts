@@ -87,16 +87,14 @@ export function getClaudeModelModes(): ModelMode[] {
 export function getCodexModelModes(): ModelMode[] {
     return [
         { key: 'default', name: 'default model', description: null },
-        { key: 'gpt-5.6-sol', name: 'gpt-5.6-sol', description: null },
-        { key: 'gpt-5.6-terra', name: 'gpt-5.6-terra', description: null },
-        { key: 'gpt-5.6-luna', name: 'gpt-5.6-luna', description: null },
-        { key: 'gpt-5.5', name: 'gpt-5.5', description: null },
-        { key: 'gpt-5.4', name: 'gpt-5.4', description: null },
-        { key: 'gpt-5.3-codex', name: 'gpt-5.3-codex', description: null },
-        { key: 'gpt-5.2-codex', name: 'gpt-5.2-codex', description: null },
-        { key: 'gpt-5.1-codex-max', name: 'gpt-5.1-codex-max', description: null },
-        { key: 'gpt-5.2', name: 'gpt-5.2', description: null },
-        { key: 'gpt-5.1-codex-mini', name: 'gpt-5.1-codex-mini', description: null },
+        { key: 'gpt-6.1-sol', name: 'GPT-6.1-Sol', description: 'Latest workhorse model for coding and everyday work.' },
+        { key: 'gpt-6-astra', name: 'GPT-6-Astra', description: 'Frontier intelligence for the most demanding work.' },
+        { key: 'gpt-6.1-terra', name: 'GPT-6.1 Terra', description: 'GPT-6.1 Terra Codex model.' },
+        { key: 'gpt-6-sol', name: 'GPT-6-Sol', description: 'Previous generation workhorse model.' },
+        { key: 'gpt-6-luna', name: 'GPT-6-Luna', description: 'Fast and affordable model for easier tasks.' },
+        { key: 'gpt-5.6-sol', name: 'GPT-5.6-Sol', description: 'Older generation workhorse model.' },
+        { key: 'gpt-5.6-terra', name: 'GPT-5.6-Terra', description: 'Older balanced model for straightforward work.' },
+        { key: 'gpt-5.6-luna', name: 'GPT-5.6-Luna', description: 'Older fast and efficient model.' },
     ];
 }
 
@@ -221,6 +219,7 @@ export function getCodexEffortLevels(): EffortLevel[] {
         { key: 'medium', name: 'medium' },
         { key: 'high', name: 'high' },
         { key: 'xhigh', name: 'xhigh' },
+        { key: 'max', name: 'max' },
     ];
 }
 

@@ -15,6 +15,8 @@ interface ChatHeaderViewProps {
     extraPathSegment?: string;
     /** Optional content rendered at the right edge of the header (used by file-view / diff overlays). */
     rightSlot?: React.ReactNode;
+    /** Optional thin strip under the title row (account quota, etc.). */
+    belowTitle?: React.ReactNode;
     onTitlePress?: () => void;
     onBackPress?: () => void;
     backgroundColor?: string;
@@ -27,6 +29,7 @@ export const ChatHeaderView: React.FC<ChatHeaderViewProps> = ({
     folderName,
     extraPathSegment,
     rightSlot,
+    belowTitle,
     onTitlePress,
     onBackPress,
     isConnected = true,
@@ -109,6 +112,7 @@ export const ChatHeaderView: React.FC<ChatHeaderViewProps> = ({
                         </View>
                     ) : null}
                 </View>
+                {belowTitle}
             </View>
         </View>
     );

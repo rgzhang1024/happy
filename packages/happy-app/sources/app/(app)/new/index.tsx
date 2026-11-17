@@ -509,6 +509,26 @@ function getMachineName(machine: Machine): string {
     return machine.metadata?.displayName || machine.metadata?.host || 'unknown';
 }
 
+function getMachinePriority(machine: Machine): number {
+    const onlinePenalty = isMachineOnline(machine) ? 0 : 100;
+    const name = getMachineName(machine).toLowerCase();
+    const roleRank = name.includes('primary') || name.startsWith('sg-')
+        ? 0
+        : (name.includes('emergency') || name.startsWith('nj-') ? 2 : 1);
+    return onlinePenalty + roleRank;
+}
+
+function getDefaultPathForMachine(machine: Machine | null): string {
+    const name = machine ? getMachineName(machine).toLowerCase() : '';
+    if (name.includes('emergency') || name.startsWith('nj-')) {
+        return '/data/ops-workspace';
+    }
+    if (name.includes('primary') || name.startsWith('sg-')) {
+        return '/data/workspace';
+    }
+    return '~';
+}
+
 // Owns the `input` subscription so the parent screen can stay decoupled from
 // keystroke-rate state changes. Memoized: parent re-renders (e.g. when
 // `canSend` flips or a picker opens) won't force the input to re-render
@@ -604,13 +624,10 @@ function NewSessionScreen() {
     // Config collapse — auto-collapses when typing, expands when empty
     const [isConfigExpanded, setIsConfigExpanded] = React.useState(true);
 
-    // Auto-select first machine when none selected (first-ever use, no draft)
-    React.useEffect(() => {
-        if (selectedMachineId) return;
-        if (allMachines.length > 0) {
-            setSelectedMachineId(allMachines[0].id);
-        }
-    }, [allMachines, selectedMachineId]);
+    const sortedMachines = React.useMemo(
+        () => [...allMachines].sort((a, b) => getMachinePriority(a) - getMachinePriority(b)),
+        [allMachines],
+    );
 
     const selectedMachine = React.useMemo(
         () => allMachines.find(m => m.id === selectedMachineId) ?? null,
@@ -618,13 +635,23 @@ function NewSessionScreen() {
     );
     const selectedHomeDir = selectedMachine?.metadata?.homeDir;
 
-    // Build machine picker items: online first, then offline
+    // Auto-select best online primary machine when none is selected or when persisted selection is offline
+    React.useEffect(() => {
+        if (sortedMachines.length === 0) return;
+        const best = sortedMachines[0];
+        if (!selectedMachineId) {
+            setSelectedMachineId(best.id);
+            return;
+        }
+        if ((!selectedMachine || !isMachineOnline(selectedMachine)) && isMachineOnline(best) && best.id !== selectedMachineId) {
+            setSelectedMachineId(best.id);
+            setSelectedPath(null);
+        }
+    }, [sortedMachines, selectedMachineId, selectedMachine, setSelectedMachineId, setSelectedPath]);
+
+    // Build machine picker items: online primary first, emergency second, offline last
     const machineItems = React.useMemo<PickerItem[]>(() => {
-        const sorted = [...allMachines].sort((a, b) => {
-            const aOnline = isMachineOnline(a) ? 0 : 1;
-            const bOnline = isMachineOnline(b) ? 0 : 1;
-            return aOnline - bOnline;
-        });
+        const sorted = sortedMachines;
         return sorted.map(m => ({
             key: m.id,
             label: getMachineName(m),
@@ -657,8 +684,8 @@ function NewSessionScreen() {
             return;
         }
 
-        setSelectedPath(pathItems[0]?.label ?? '~');
-    }, [selectedMachineId, pathItems, selectedPath, setSelectedPath]);
+        setSelectedPath(pathItems[0]?.label ?? getDefaultPathForMachine(selectedMachine));
+    }, [selectedMachineId, selectedMachine, pathItems, selectedPath, setSelectedPath]);
 
     const resolvedSelectedPath = React.useMemo(() => {
         return normalizePathForComparison(selectedPath, selectedHomeDir);
@@ -858,7 +885,10 @@ function NewSessionScreen() {
     const handlePickerSelect = React.useCallback((key: string) => {
         switch (activePicker) {
             case 'machine':
-                setSelectedMachineId(key);
+                if (key !== selectedMachineId) {
+                    setSelectedMachineId(key);
+                    setSelectedPath(null);
+                }
                 break;
             case 'worktree':
                 setWorktreeKey(key);
@@ -902,7 +932,9 @@ function NewSessionScreen() {
         modelModes,
         permissionModes,
         setSelectedAgent,
+        selectedMachineId,
         setSelectedMachineId,
+        setSelectedPath,
         setWorktreeKey,
     ]);
 

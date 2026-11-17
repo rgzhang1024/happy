@@ -237,6 +237,7 @@ export class CodexAppServerClient {
     // Handlers set by the consumer (runCodex.ts)
     private eventHandler: ((msg: EventMsg) => void) | null = null;
     private approvalHandler: ApprovalHandler | null = null;
+    private rateLimitsUpdatedHandler: (() => void) | null = null;
 
     constructor(sandboxConfig?: SandboxConfig) {
         this.sandboxConfig = sandboxConfig;
@@ -329,6 +330,14 @@ export class CodexAppServerClient {
         }
 
         return { models: Array.from(models.values()), defaultModel };
+    }
+
+    async readRateLimits(): Promise<unknown> {
+        return this.request('account/rateLimits/read', {});
+    }
+
+    setRateLimitsUpdatedHandler(handler: (() => void) | null): void {
+        this.rateLimitsUpdatedHandler = handler;
     }
 
     setEventHandler(handler: (msg: EventMsg) => void): void {
@@ -1480,6 +1489,11 @@ export class CodexAppServerClient {
             return;
         }
 
+        if (method === 'account/rateLimits/updated') {
+            this.rateLimitsUpdatedHandler?.();
+            return;
+        }
+
         if (this.handleRawNotification(method, params)) {
             logger.debug(`[CodexAppServer] Raw notification: ${method}`);
             return;
@@ -1508,6 +1522,11 @@ export class CodexAppServerClient {
                     method,
                 );
             }
+            return;
+        }
+
+        if (method === 'account/rateLimits/updated') {
+            this.rateLimitsUpdatedHandler?.();
             return;
         }
 

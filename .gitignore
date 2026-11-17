@@ -76,3 +76,8 @@ happy-workspaces/
 
 # third party tools
 .supervibe/
+
+# local hotfix backups
+.hotfixes/
+*.bak.*
+.env.bak.*

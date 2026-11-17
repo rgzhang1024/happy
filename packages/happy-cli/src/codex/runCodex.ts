@@ -40,6 +40,7 @@ import { enqueueCodexUserText, isCodexClearText } from './codexClearCommand';
 import { downloadCodexFileEventAttachment } from './utils/attachmentEvents';
 import { prepareCodexImageInputItems } from './utils/imageInput';
 import { createSerialAsyncHandler } from './utils/serialAsyncHandler';
+import { normalizeCodexRateLimits, usageLimitsFingerprint } from './codexRateLimits';
 import { buildCodexThreadBackfillEnvelopes } from './utils/threadImageBackfill';
 import {
     buildCodexTurnPrompt,
@@ -284,7 +285,7 @@ export async function runCodex(opts: {
     ];
 
     const VALID_REMOTE_EFFORTS: readonly ReasoningEffort[] = [
-        'none', 'minimal', 'low', 'medium', 'high', 'xhigh',
+        'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max',
     ];
 
     const handleUserMessage = createSerialAsyncHandler<UserMessage>(async (message) => {
@@ -380,6 +381,29 @@ export async function runCodex(opts: {
     const keepAliveInterval = setInterval(() => {
         session.keepAlive(thinking, 'remote');
     }, 2000);
+
+    const publishUsageLimits = createSerialAsyncHandler(async () => {
+        if (!client) {
+            return;
+        }
+        const raw = await client.readRateLimits();
+        const usageLimits = normalizeCodexRateLimits(raw);
+        if (!usageLimits) {
+            return;
+        }
+        if (usageLimitsFingerprint(session.getMetadata()?.usageLimits) === usageLimitsFingerprint(usageLimits)) {
+            return;
+        }
+        session.updateMetadata((currentMetadata) => ({
+            ...currentMetadata,
+            usageLimits,
+        }));
+    }, (error) => {
+        logger.debug('[Codex] Failed to publish account rate limits', error);
+    });
+    const usageLimitsInterval = setInterval(() => {
+        publishUsageLimits(null);
+    }, 60_000);
 
     const sendReady = () => {
         session.sendSessionEvent({ type: 'ready' });
@@ -831,6 +855,11 @@ export async function runCodex(opts: {
             logger.warn('[Codex] Failed to load dynamic model catalog; using app fallback list', error);
         }
 
+        client.setRateLimitsUpdatedHandler(() => {
+            publishUsageLimits(null);
+        });
+        publishUsageLimits(null);
+
         if (opts.resumeThreadId) {
             await resumeExistingThread({
                 client,
@@ -1026,6 +1055,7 @@ export async function runCodex(opts: {
                     shouldExit,
                     sendReady,
                 });
+                publishUsageLimits(null);
                 logActiveHandles('after-turn');
             }
         }
@@ -1073,6 +1103,8 @@ export async function runCodex(opts: {
         // Clear periodic keep-alive to avoid keeping event loop alive
         logger.debug('[codex]: clearInterval(keepAlive)');
         clearInterval(keepAliveInterval);
+        clearInterval(usageLimitsInterval);
+        client.setRateLimitsUpdatedHandler(null);
         if (inkInstance) {
             logger.debug('[codex]: inkInstance.unmount()');
             inkInstance.unmount();

@@ -13,6 +13,7 @@ import {
 } from '@/components/modelModeOptions';
 import { getSuggestions } from '@/components/autocomplete/suggestions';
 import { ChatHeaderView } from '@/components/ChatHeaderView';
+import { CodexUsageBar } from '@/components/CodexUsageBar';
 import { ChatList } from '@/components/ChatList';
 import { Deferred } from '@/components/Deferred';
 import { EmptyMessages } from '@/components/EmptyMessages';
@@ -44,6 +45,7 @@ import { useOverlayNav } from '@/-session/sessionOverlayNav';
 import { formatPathRelativeToHome, getResumeCommandBlock, getSessionAvatarId, getSessionName, useSessionStatus } from '@/utils/sessionUtils';
 import { useSessionQuickActions } from '@/hooks/useSessionQuickActions';
 import { isVersionSupported, MINIMUM_CLI_VERSION } from '@/utils/versionUtils';
+import { CODEX_USAGE_BAR_HEIGHT } from '@/utils/codexUsageBar';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -213,6 +215,8 @@ export const SessionView = React.memo((props: { id: string }) => {
             </Pressable>
         )
         : null;
+    const usageLimits = session?.metadata?.flavor === 'codex' ? session.metadata.usageLimits : undefined;
+    const showCodexUsageBar = (usageLimits?.windows?.length ?? 0) > 0;
 
     const mainContent = (
         <>
@@ -252,6 +256,7 @@ export const SessionView = React.memo((props: { id: string }) => {
                         isConnected={headerProps.isConnected}
                         extraPathSegment={fileViewPath ?? undefined}
                         rightSlot={(diffViewOpen || !!fileViewPath) ? headerRightSlot : headerRight}
+                        belowTitle={showCodexUsageBar && usageLimits ? <CodexUsageBar usageLimits={usageLimits} /> : null}
                         onTitlePress={session ? () => router.push(`/session/${sessionId}/info`) : undefined}
                         onBackPress={() => router.back()}
                     />
@@ -263,7 +268,7 @@ export const SessionView = React.memo((props: { id: string }) => {
             )}
 
             {/* Content based on state */}
-            <View style={{ flex: 1, paddingTop: !(isLandscape && deviceType === 'phone' && Platform.OS !== 'web') ? safeArea.top + headerHeight + (!isTablet && realtimeStatus !== 'disconnected' ? 32 : 0) : 0 }}>
+            <View style={{ flex: 1, paddingTop: !(isLandscape && deviceType === 'phone' && Platform.OS !== 'web') ? safeArea.top + headerHeight + (showCodexUsageBar ? CODEX_USAGE_BAR_HEIGHT : 0) + (!isTablet && realtimeStatus !== 'disconnected' ? 32 : 0) : 0 }}>
                 {!isDataReady ? (
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                         <ActivityIndicator size="small" color={theme.colors.textSecondary} />

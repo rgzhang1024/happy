@@ -60,9 +60,28 @@ export const MetadataSchema = z.object({
      */
     parentSessionId: z.string().optional(),
     forkedFromMessageId: z.string().optional(),
+    /**
+     * Account-level plan rate limits. Optional and parse-lenient so a
+     * malformed snapshot cannot invalidate the rest of session metadata.
+     */
+    usageLimits: z.object({
+        capturedAt: z.number(),
+        source: z.string().optional(),
+        windows: z.array(z.object({
+            id: z.string(),
+            label: z.string().optional(),
+            usedPercent: z.number(),
+            resetsAt: z.number().nullable().optional(),
+            windowDurationMins: z.number().nullable().optional(),
+        }).passthrough()),
+        resetCreditsAvailable: z.number().optional(),
+        planType: z.string().nullable().optional(),
+        rateLimitReached: z.boolean().optional(),
+    }).passthrough().optional().catch(undefined),
 });
 
 export type Metadata = z.infer<typeof MetadataSchema>;
+export type UsageLimits = NonNullable<Metadata['usageLimits']>;
 
 export const AgentGoalSourceSchema = z.enum(['claude', 'codex']);
 
