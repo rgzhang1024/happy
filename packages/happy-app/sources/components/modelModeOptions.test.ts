@@ -53,7 +53,14 @@ describe('modelModeOptions', () => {
         expect(getDefaultEffortKey('claude')).toBe('medium');
         expect(getDefaultPermissionModeKey('codex')).toBe('yolo');
         expect(getDefaultModelKey('codex')).toBe('default');
-        expect(getDefaultEffortKey('codex')).toBe('medium');
+        expect(getDefaultEffortKey('codex')).toBe('xhigh');
+    });
+
+    it('resolves codex effort to xhigh on primary host and medium on emergency host', async () => {
+        const { resolveAgentDefaultConfig } = await import('@/sync/agentDefaults');
+        expect(resolveAgentDefaultConfig(null, 'codex', { machineHost: 'sg-codex-primary' }).effortLevel).toBe('xhigh');
+        expect(resolveAgentDefaultConfig(null, 'codex', { machineHost: 'nj-cn-emergency' }).effortLevel).toBe('medium');
+        expect(resolveAgentDefaultConfig({ codex: { effortLevel: 'high' } }, 'codex', { machineHost: 'nj-cn-emergency' }).effortLevel).toBe('high');
     });
 
     it('prefers metadata models over hardcoded fallbacks', () => {

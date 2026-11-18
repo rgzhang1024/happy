@@ -27,7 +27,7 @@ COPY packages/happy-server/prisma packages/happy-server/prisma
 COPY packages/happy-cli/scripts packages/happy-cli/scripts
 COPY packages/happy-cli/tools packages/happy-cli/tools
 
-RUN SKIP_HAPPY_WIRE_BUILD=1 pnpm install --frozen-lockfile
+RUN ELECTRON_SKIP_BINARY_DOWNLOAD=1 SKIP_HAPPY_WIRE_BUILD=1 pnpm install --frozen-lockfile
 
 # Stage 2: copy source and type-check
 FROM deps AS builder

@@ -770,9 +770,10 @@ function NewSessionScreen() {
         () => getEffortLevelsForModel(selectedAgent, currentModelKey),
         [selectedAgent, currentModelKey],
     );
+    const selectedMachineHost = selectedMachine ? getMachineName(selectedMachine) : null;
     const effectiveAgentDefaults = React.useMemo(() => (
-        resolveAgentDefaultConfig(agentDefaultOverrides, selectedAgent)
-    ), [agentDefaultOverrides, selectedAgent]);
+        resolveAgentDefaultConfig(agentDefaultOverrides, selectedAgent, { machineHost: selectedMachineHost })
+    ), [agentDefaultOverrides, selectedAgent, selectedMachineHost]);
 
     const supportsWorktree = getSupportsWorktree(selectedAgent);
     const showModel = modelModes.length > 1;

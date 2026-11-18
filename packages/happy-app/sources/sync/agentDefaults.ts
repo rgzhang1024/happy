@@ -30,7 +30,7 @@ const codeAgentDefaults: Record<AgentKey, AgentDefaultConfig> = {
     // The Claude UI key for YOLO is `bypassPermissions`; the CLI also accepts
     // `yolo` and maps it to the Claude SDK's bypass mode.
     claude: { permissionMode: 'bypassPermissions', modelMode: 'opus', effortLevel: 'medium' },
-    codex: { permissionMode: 'yolo', modelMode: 'default', effortLevel: 'medium' },
+    codex: { permissionMode: 'yolo', modelMode: 'default', effortLevel: 'xhigh' },
     gemini: { permissionMode: 'default', modelMode: 'gemini-2.5-pro', effortLevel: null },
     openclaw: { permissionMode: 'default', modelMode: 'default', effortLevel: null },
 };
@@ -53,16 +53,27 @@ export function getAgentDefaultOverride(
     return overrides?.[normalizeAgentKey(flavor)] ?? {};
 }
 
+function isEmergencyCodexHost(machineHost: string | null | undefined): boolean {
+    if (!machineHost) return false;
+    const normalized = machineHost.trim().toLowerCase();
+    return normalized.includes('emergency') || normalized.startsWith('nj-');
+}
+
 export function resolveAgentDefaultConfig(
     overrides: AgentDefaultOverrides | null | undefined,
     flavor: string | null | undefined,
+    options?: { machineHost?: string | null },
 ): AgentDefaultConfig {
-    const codeDefaults = getCodeAgentDefaults(flavor);
-    const userOverride = getAgentDefaultOverride(overrides, flavor);
+    const normalizedKey = normalizeAgentKey(flavor);
+    const codeDefaults = getCodeAgentDefaults(normalizedKey);
+    const userOverride = getAgentDefaultOverride(overrides, normalizedKey);
+    const machineEffortFallback = normalizedKey === 'codex' && isEmergencyCodexHost(options?.machineHost)
+        ? 'medium'
+        : codeDefaults.effortLevel;
     return {
         permissionMode: userOverride.permissionMode ?? codeDefaults.permissionMode,
         modelMode: userOverride.modelMode ?? codeDefaults.modelMode,
-        effortLevel: userOverride.effortLevel ?? codeDefaults.effortLevel,
+        effortLevel: userOverride.effortLevel ?? machineEffortFallback,
     };
 }
 

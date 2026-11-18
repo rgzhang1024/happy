@@ -74,7 +74,7 @@ function describeCodexFailure(msg: any): string | null {
 // Leave the model unset unless the user explicitly chooses one. This lets the
 // installed Codex version select its current default from its live catalog.
 const DEFAULT_CODEX_MODEL: string | undefined = undefined;
-const DEFAULT_CODEX_EFFORT: ReasoningEffort = 'medium';
+const DEFAULT_CODEX_EFFORT: ReasoningEffort | undefined = undefined;
 const DEFAULT_CODEX_PERMISSION_MODE: PermissionMode = 'yolo';
 
 /**
@@ -285,7 +285,7 @@ export async function runCodex(opts: {
     ];
 
     const VALID_REMOTE_EFFORTS: readonly ReasoningEffort[] = [
-        'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max',
+        'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra',
     ];
 
     const handleUserMessage = createSerialAsyncHandler<UserMessage>(async (message) => {

@@ -459,9 +459,10 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
         getAvailablePermissionModes(flavor, session.metadata, t)
     ), [flavor, session.metadata]);
     const agentDefaultOverrides = useSetting('agentDefaultOverrides');
+    const sessionHost = session.metadata?.host;
     const effectiveAgentDefaults = React.useMemo(() => (
-        resolveAgentDefaultConfig(agentDefaultOverrides, flavor)
-    ), [agentDefaultOverrides, flavor]);
+        resolveAgentDefaultConfig(agentDefaultOverrides, flavor, { machineHost: sessionHost })
+    ), [agentDefaultOverrides, flavor, sessionHost]);
 
     const permissionMode = React.useMemo<PermissionMode | null>(() => (
         resolveCurrentOption(availableModes, [
