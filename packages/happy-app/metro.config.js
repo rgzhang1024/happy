@@ -51,4 +51,11 @@ config.transformer.getTransformOptions = async () => ({
   },
 });
 
+if (process.env.HAPPY_METRO_CACHE_DIR) {
+  const { createRequire } = require('module');
+  const expoReq = createRequire(require.resolve('expo/metro-config'));
+  const { FileStore } = createRequire(expoReq.resolve('@expo/metro-config'))('metro-cache');
+  config.cacheStores = [new FileStore({ root: process.env.HAPPY_METRO_CACHE_DIR })];
+}
+
 module.exports = config;

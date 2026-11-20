@@ -38,7 +38,7 @@ COPY packages/happy-app ./packages/happy-app
 
 RUN pnpm --filter @slopus/happy-wire build
 RUN pnpm --filter happy-server-self-host typecheck
-RUN pnpm --filter happy-server-self-host bundle:webapp
+RUN --mount=type=cache,id=happy-metro-cache,target=/tmp/happy-metro-cache HAPPY_METRO_CACHE_DIR=/tmp/happy-metro-cache pnpm --filter happy-server-self-host bundle:webapp
 
 # Stage 3: runtime
 FROM node:20-slim AS runner

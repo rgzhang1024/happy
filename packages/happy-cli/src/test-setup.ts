@@ -11,6 +11,8 @@ export async function setup() {
     process.env.VITEST_POOL_TIMEOUT = '60000'
     process.env.HAPPY_RUN_SANDBOX_NETWORK_TESTS = '1'
 
+    if (process.env.HAPPY_SKIP_TEST_BUILD === '1') return
+
     const buildResult = spawnSync('pnpm', ['build'], { stdio: 'pipe' })
     if (buildResult.stderr && buildResult.stderr.length > 0) {
         const errorOutput = buildResult.stderr.toString()
