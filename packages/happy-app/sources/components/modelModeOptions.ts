@@ -87,14 +87,16 @@ export function getClaudeModelModes(): ModelMode[] {
 export function getCodexModelModes(): ModelMode[] {
     return [
         { key: 'default', name: 'default model', description: null },
-        { key: 'gpt-6.1-sol', name: 'GPT-6.1-Sol', description: 'Latest workhorse model for coding and everyday work.' },
-        { key: 'gpt-6-astra', name: 'GPT-6-Astra', description: 'Frontier intelligence for the most demanding work.' },
-        { key: 'gpt-6.1-terra', name: 'GPT-6.1 Terra', description: 'GPT-6.1 Terra Codex model.' },
-        { key: 'gpt-6-sol', name: 'GPT-6-Sol', description: 'Previous generation workhorse model.' },
+        { key: 'gpt-6.2-sol', name: 'GPT-6.2-Sol', description: 'Fast, go-to model for coding and everyday work.' },
+        { key: 'gpt-6.2-astra', name: 'GPT-6.2-Astra', description: 'Our most capable model for complex coding and professional work.' },
+        { key: 'gpt-6.1-terra', name: 'GPT-6.1 Terra', description: 'Efficient model that excels at visual understanding and computer use.' },
+        { key: 'gpt-6.1-sol', name: 'GPT-6.1-Sol', description: 'Previous generation model for coding and everyday work.' },
+        { key: 'gpt-6-astra', name: 'GPT-6-Astra', description: 'Previous generation model for complex coding and professional work.' },
+        { key: 'gpt-6-sol', name: 'GPT-6-Sol', description: 'Legacy model for coding and everyday work.' },
         { key: 'gpt-6-luna', name: 'GPT-6-Luna', description: 'Fast and affordable model for easier tasks.' },
-        { key: 'gpt-5.6-sol', name: 'GPT-5.6-Sol', description: 'Older generation workhorse model.' },
-        { key: 'gpt-5.6-terra', name: 'GPT-5.6-Terra', description: 'Older balanced model for straightforward work.' },
-        { key: 'gpt-5.6-luna', name: 'GPT-5.6-Luna', description: 'Older fast and efficient model.' },
+        { key: 'gpt-5.6-sol', name: 'GPT-5.6-Sol', description: 'Legacy model for coding and everyday work.' },
+        { key: 'gpt-5.6-terra', name: 'GPT-5.6-Terra', description: 'Legacy balanced model for agentic coding.' },
+        { key: 'gpt-5.6-luna', name: 'GPT-5.6-Luna', description: 'Legacy fast model for simpler tasks.' },
     ];
 }
 
@@ -220,6 +222,7 @@ export function getCodexEffortLevels(): EffortLevel[] {
         { key: 'high', name: 'high' },
         { key: 'xhigh', name: 'xhigh' },
         { key: 'max', name: 'max' },
+        { key: 'ultra', name: 'ultra' },
     ];
 }
 

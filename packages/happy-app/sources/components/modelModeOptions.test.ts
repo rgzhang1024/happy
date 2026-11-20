@@ -34,9 +34,11 @@ describe('modelModeOptions', () => {
         const models = getCodexModelModes();
         expect(models.map((model) => model.key)).toEqual([
             'default',
+            'gpt-6.2-sol',
+            'gpt-6.2-astra',
+            'gpt-6.1-terra',
             'gpt-6.1-sol',
             'gpt-6-astra',
-            'gpt-6.1-terra',
             'gpt-6-sol',
             'gpt-6-luna',
             'gpt-5.6-sol',
@@ -44,7 +46,8 @@ describe('modelModeOptions', () => {
             'gpt-5.6-luna',
         ]);
         expect(models[0].name).toBe('default model');
-        expect(models[1].name).toBe('GPT-6.1-Sol');
+        expect(models[1].name).toBe('GPT-6.2-Sol');
+        expect(models[2].name).toBe('GPT-6.2-Astra');
     });
 
     it('uses code defaults for agent defaults', () => {

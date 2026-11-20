@@ -980,7 +980,11 @@ export async function runCodex(opts: {
                         mcpServers,
                     });
                     activeThreadId = startedThread.threadId;
-                    codexDefaultModel ??= startedThread.model;
+                    if (!message.mode.model && startedThread.model) {
+                        codexDefaultModel = startedThread.model;
+                    } else {
+                        codexDefaultModel ??= startedThread.model;
+                    }
                     session.updateMetadata((currentMetadata) => ({
                         ...currentMetadata,
                         codexThreadId: startedThread.threadId,
